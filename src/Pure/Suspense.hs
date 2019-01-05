@@ -20,22 +20,22 @@ data Suspense v = Suspense
 instance Typeable v => Pure (Suspense v) where
   view = LibraryComponentIO $ \self ->
     def
-      { construct = return (False,Null)
-      , executing =
-        void $ forkIO $ do
+      { construct = do
+          Suspense {..} <- ask self
+          return (fmap render value)
+      , executing = void $ forkIO $ do
         Suspense {..} <- ask self
         threadDelay delay
-        modify_ self $ \Suspense {..} (ran,v) ->
-          if isJust value then (ran,v) else (True,fallback)
-      , receive = \Suspense {..} (ran,v) -> return $
-        case value of
-          Just v              -> (ran,render v)
-          Nothing | ran       -> (ran,v)
-                  | otherwise -> (ran,fallback)
-      , Pure.Data.View.render = \_ (_,v) -> v
+        modify_ self $ \Suspense {..} ->
+          maybe (Just fallback) Just
+      , receive = \Suspense {..} _ ->
+          return (fmap render value)
+      , Pure.Data.View.render = \_ ->
+          fromMaybe Null
       }
 
--- | `suspense` is like `maybe` with a delay parameter (in microseconds)
+-- | `suspense` displays a fallback if a value has not become `Just` after a
+-- given delay.
 --
 -- NOTE: does not correctly handle changes to delay, but should correctly
 --       handle changes to fallback, render, and value.
