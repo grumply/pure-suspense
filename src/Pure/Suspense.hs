@@ -23,11 +23,13 @@ instance Typeable v => Pure (Suspense v) where
       { construct = do
           Suspense {..} <- ask self
           return (fmap render value)
-      , executing = void $ forkIO $ do
-        Suspense {..} <- ask self
-        threadDelay delay
-        modify_ self $ \Suspense {..} ->
-          maybe (Just fallback) Just
+      , executing = \st -> do
+        void $ forkIO $ do
+          Suspense {..} <- ask self
+          threadDelay delay
+          modify_ self $ \Suspense {..} ->
+            maybe (Just fallback) Just
+        pure st
       , receive = \Suspense {..} _ ->
           return (fmap render value)
       , Pure.Data.View.render = \_ ->
