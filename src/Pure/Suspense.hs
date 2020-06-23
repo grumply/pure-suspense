@@ -18,7 +18,7 @@ data Suspense v = Suspense
   }
 
 instance Typeable v => Pure (Suspense v) where
-  view = LibraryComponentIO $ \self ->
+  view = Component $ \self ->
     def
       { construct = do
           Suspense {..} <- ask self
